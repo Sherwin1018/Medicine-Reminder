@@ -7,10 +7,14 @@ from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.scrollview import MDScrollView
+from kivymd.uix.anchorlayout import MDAnchorLayout
+from kivy.metrics import dp
 from kivy.app import App
+from kivymd.app import MDApp
+from kivy.graphics import Color, Rectangle
 
-REMINDERS_FILE = "reminders.json"
-TRACK_FILE = "tracker.json"
+REMINDERS_FILE = os.path.join("data", "reminders.json")
+TRACK_FILE = os.path.join("data", "tracker.json")
 
 class TrackerScreen(MDScreen):
     def on_pre_enter(self):
@@ -18,53 +22,87 @@ class TrackerScreen(MDScreen):
         self.build_ui()
 
     def build_ui(self):
-        main = MDBoxLayout(orientation="vertical", padding=20, spacing=20)
+        theme = MDApp.get_running_app().theme_cls.theme_style
+        taken_bg = (0.8, 1, 0.8, 1) if theme == "Light" else (0.2, 0.4, 0.2, 1)
+        missed_bg = (1, 0.8, 0.8, 1) if theme == "Light" else (0.4, 0.2, 0.2, 1)
 
-        # === SUMMARY CARDS ===
-        summary_box = MDBoxLayout(size_hint_y=None, height=120, spacing=20)
+        main = MDBoxLayout(orientation="vertical", padding=dp(20), spacing=dp(20))
 
-        self.taken_card = MDCard(orientation="vertical", padding=15, radius=[15], md_bg_color="#E8F5E9")
-        self.taken_label = MDLabel(text="0", halign="center", font_style="H4")
-        self.taken_card.add_widget(MDLabel(text="Taken", halign="center"))
+        # === TRACKER PAGE HEADING ===
+        heading_color = (1, 1, 1, 1) if theme == "Dark" else (0, 0, 0, 1)
+        heading_label = MDLabel(
+            text="Tracker Page",
+            halign="center",
+            font_style="H5",
+            theme_text_color="Custom",
+            text_color=heading_color,
+            size_hint_y=None,
+            height=dp(40)
+        )
+        main.add_widget(heading_label)
+
+        summary_box = MDBoxLayout(size_hint_y=None, height=dp(120), spacing=dp(20))
+
+        self.taken_card = MDCard(
+            orientation="vertical",
+            padding=dp(15),
+            radius=[dp(15)],
+            md_bg_color=taken_bg,
+            elevation=5
+        )
+        self.taken_label = MDLabel(text="0", halign="center", font_style="H4", theme_text_color="Primary")
+        self.taken_card.add_widget(MDLabel(text="Taken", halign="center", theme_text_color="Primary"))
         self.taken_card.add_widget(self.taken_label)
 
-        self.missed_card = MDCard(orientation="vertical", padding=15, radius=[15], md_bg_color="#FFEBEE")
-        self.missed_label = MDLabel(text="0", halign="center", font_style="H4")
-        self.missed_card.add_widget(MDLabel(text="Missed", halign="center"))
+        self.missed_card = MDCard(
+            orientation="vertical",
+            padding=dp(15),
+            radius=[dp(15)],
+            md_bg_color=missed_bg,
+            elevation=5
+        )
+        self.missed_label = MDLabel(text="0", halign="center", font_style="H4", theme_text_color="Primary")
+        self.missed_card.add_widget(MDLabel(text="Missed", halign="center", theme_text_color="Primary"))
         self.missed_card.add_widget(self.missed_label)
 
         summary_box.add_widget(self.taken_card)
         summary_box.add_widget(self.missed_card)
 
-        # === DATE HEADER ===
         today_str = datetime.now().strftime("%Y-%m-%d")
         date_label = MDLabel(
-            text=f"📅 {today_str}",
+            text=f"{today_str}",
             halign="center",
             font_style="H6",
             bold=True,
             size_hint_y=None,
-            height=40
+            height=dp(40),
+            theme_text_color="Primary"
         )
 
-        # === SCROLLABLE MEDICINE LIST ===
         scroll = MDScrollView()
-        self.list_box = MDBoxLayout(orientation="vertical", spacing=10, size_hint_y=None)
+        self.list_box = MDBoxLayout(orientation="vertical", spacing=dp(10), size_hint_y=None)
         self.list_box.bind(minimum_height=self.list_box.setter("height"))
         scroll.add_widget(self.list_box)
+
+        back_container = MDAnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint_y=None,
+            height=dp(70),
+            padding=[0, dp(10), 0, dp(10)]
+        )
+        back_btn = MDRaisedButton(
+            text="Back",
+            on_release=lambda x: self.go_back(),
+            size_hint=(None, None),
+            size=(dp(100), dp(50))
+        )
+        back_container.add_widget(back_btn)
 
         main.add_widget(summary_box)
         main.add_widget(date_label)
         main.add_widget(scroll)
-
-        # === BACK BUTTON ===
-        back_btn = MDRaisedButton(
-            text="Back",
-            on_release=lambda x: self.go_back(),
-            size_hint_y=None,
-            height=50
-        )
-        main.add_widget(back_btn)
+        main.add_widget(back_container)
 
         self.add_widget(main)
 
@@ -97,14 +135,12 @@ class TrackerScreen(MDScreen):
 
             key = f"{med_name}_{date_str}"
 
-            # === Past-day auto-mark missed ===
             if date_str < today:
                 if not self.was_marked(med_name, date_str):
                     self.tracker_data[key] = "missed"
                 continue
 
-            # === Auto-miss if 2 hours passed and not taken ===
-            if date_str == today and reminder_time + timedelta(hours=2) < now:
+            if date_str == today and reminder_time + timedelta(hours=2) < datetime.now():
                 if not self.was_marked(med_name, date_str):
                     self.tracker_data[key] = "missed"
 
@@ -115,8 +151,8 @@ class TrackerScreen(MDScreen):
 
     def add_medicine_item(self, medicine_name, date_str, reminder_time):
         key = f"{medicine_name}_{date_str}"
-        row = MDBoxLayout(orientation="horizontal", spacing=10, padding=10, size_hint_y=None, height=60)
-        row.add_widget(MDLabel(text=medicine_name, halign="left"))
+        row = MDBoxLayout(orientation="horizontal", spacing=dp(10), padding=dp(10), size_hint_y=None, height=dp(60))
+        row.add_widget(MDLabel(text=medicine_name, halign="left", theme_text_color="Primary"))
 
         if self.was_marked(medicine_name, date_str):
             status = self.tracker_data[key]
@@ -154,6 +190,18 @@ class TrackerScreen(MDScreen):
 
         self.list_box.add_widget(row)
 
+        # === Divider Line ===
+        divider = MDBoxLayout(size_hint_y=None, height=1)
+        with divider.canvas.before:
+            Color(0.7, 0.7, 0.7, 1)
+            divider.rect = Rectangle()
+        divider.bind(pos=self.update_divider, size=self.update_divider)
+        self.list_box.add_widget(divider)
+
+    def update_divider(self, instance, value):
+        instance.rect.pos = instance.pos
+        instance.rect.size = instance.size
+
     def mark_and_replace(self, row, medicine_name, date_str, status):
         key = f"{medicine_name}_{date_str}"
         if key in self.tracker_data:
@@ -169,7 +217,7 @@ class TrackerScreen(MDScreen):
         self.update_summary_ui()
 
         row.clear_widgets()
-        row.add_widget(MDLabel(text=medicine_name, halign="left"))
+        row.add_widget(MDLabel(text=medicine_name, halign="left", theme_text_color="Primary"))
         status_label = MDLabel(
             text=f"Marked as {status.capitalize()}",
             halign="right",
@@ -199,8 +247,8 @@ class TrackerScreen(MDScreen):
                     self.missed_count += 1
 
     def save_tracker_counts(self):
-        self.tracker_data["taken"] = self.taken_count
-        self.tracker_data["missed"] = self.missed_count
+        # Remove previous summary keys to avoid duplication
+        self.tracker_data = {k: v for k, v in self.tracker_data.items() if k not in ["taken", "missed"]}
         with open(TRACK_FILE, "w") as f:
             json.dump(self.tracker_data, f, indent=4)
 

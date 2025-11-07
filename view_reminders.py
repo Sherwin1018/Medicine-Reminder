@@ -6,12 +6,12 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton, MDFlatButton
 from kivymd.uix.label import MDLabel
 from kivymd.uix.card import MDCard
-from kivy.uix.anchorlayout import AnchorLayout
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.dialog import MDDialog
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.app import App
 
-DATA_FILE = "reminders.json"
+DATA_FILE = os.path.join("data", "reminders.json")
 
 class ViewRemindersScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -33,10 +33,15 @@ class ViewRemindersScreen(MDScreen):
             size_hint=(0.9, None),
             height=500,
             spacing=15,
-            elevation=5,
+            elevation=5
         )
 
-        main_card.add_widget(MDLabel(text="Your Reminders", halign="center", font_style="H5"))
+        main_card.add_widget(MDLabel(
+            text="Your Reminders",
+            halign="center",
+            font_style="H5",
+            theme_text_color="Primary"
+        ))
 
         scroll = MDScrollView(size_hint=(1, None), height=350)
         list_layout = MDBoxLayout(orientation="vertical", spacing=10, size_hint_y=None)
@@ -69,15 +74,25 @@ class ViewRemindersScreen(MDScreen):
                     orientation="vertical",
                     radius=[10],
                     size_hint_y=None,
-                    height=100,
-                    md_bg_color=(0.9, 0.95, 0.97, 1),
+                    height=140,
+                    spacing=10
                 )
+
+                # Medicine name
                 record_card.add_widget(MDLabel(
-                    text=f"{medicine} - {date} at {time}",
+                    text=medicine,
                     halign="center",
-                    theme_text_color="Primary"
+                    theme_text_color="Primary",
+                    font_style="Subtitle1"
                 ))
 
+                # Date and time layout
+                datetime_layout = MDBoxLayout(orientation="horizontal", spacing=10, size_hint_y=None, height=30)
+                datetime_layout.add_widget(MDLabel(text=f"Date: {date}", halign="left", theme_text_color="Hint"))
+                datetime_layout.add_widget(MDLabel(text=f"Time: {time}", halign="right", theme_text_color="Hint"))
+                record_card.add_widget(datetime_layout)
+
+                # Buttons
                 btn_layout = MDBoxLayout(orientation="horizontal", spacing=20, size_hint_y=None, height=40)
                 edit_btn = MDRaisedButton(text="Edit", on_release=lambda x, i=idx: self.edit_reminder(i))
                 delete_btn = MDFlatButton(text="Delete", on_release=lambda x, i=idx: self.delete_reminder(i))
@@ -86,8 +101,16 @@ class ViewRemindersScreen(MDScreen):
                 record_card.add_widget(btn_layout)
 
                 list_layout.add_widget(record_card)
+
+                # Separator line
+                separator = MDBoxLayout(size_hint_y=None, height=1, md_bg_color=(0.6, 0.6, 0.6, 1))
+                list_layout.add_widget(separator)
         else:
-            list_layout.add_widget(MDLabel(text="No reminders yet.", halign="center", theme_text_color="Hint"))
+            list_layout.add_widget(MDLabel(
+                text="No reminders yet.",
+                halign="center",
+                theme_text_color="Hint"
+            ))
 
         scroll.add_widget(list_layout)
         main_card.add_widget(scroll)

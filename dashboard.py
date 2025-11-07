@@ -12,10 +12,11 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.dialog import MDDialog
-from kivy.graphics import Color, Rectangle
+from kivymd.uix.fitimage import FitImage
+from kivymd.app import MDApp
 
-REMINDERS_FILE = "reminders.json"
-TRACK_FILE = "tracker.json"
+REMINDERS_FILE = os.path.join("data", "reminders.json")
+TRACK_FILE = os.path.join("data", "tracker.json")
 
 def rgb(r, g, b, a=255):
     return (r / 255, g / 255, b / 255, a / 255)
@@ -30,18 +31,37 @@ class DashboardScreen(MDScreen):
         self.layout = MDBoxLayout(orientation="vertical")
 
         # === HEADER ===
-        header = MDBoxLayout(orientation="horizontal", size_hint=(1, 0.13), padding=[10, 10, 10, 10], spacing=10)
-        with header.canvas.before:
-            Color(*rgb(25, 153, 178))
-            self.header_bg = Rectangle()
-        header.bind(pos=self._update_header_bg, size=self._update_header_bg)
+        self.header = MDBoxLayout(
+            orientation="horizontal",
+            size_hint=(1, 0.13),
+            padding=[10, 10, 10, 10],
+            spacing=10
+        )
 
-        title = MDLabel(text="Smart Medicine Reminder", halign="left", valign="middle", theme_text_color="Custom", text_color=(1, 1, 1, 1), font_style="H6")
-        self.notif_btn = MDIconButton(icon="bell-outline", theme_icon_color="Custom", icon_color=(1, 1, 1, 1), pos_hint={"center_y": 0.5}, on_press=self.on_notif_pressed)
+        title_layout = MDBoxLayout(orientation="horizontal", spacing=10)
+        logo = FitImage(source="assets/headerlogo.png", size_hint=(None, None), size=(100, 100))
+        title_label = MDLabel(
+            text="Smart Medicine Reminder",
+            halign="left",
+            valign="middle",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1),
+            font_style="H6"
+        )
+        title_layout.add_widget(logo)
+        title_layout.add_widget(title_label)
 
-        header.add_widget(title)
-        header.add_widget(self.notif_btn)
-        self.layout.add_widget(header)
+        self.notif_btn = MDIconButton(
+            icon="bell-outline",
+            theme_icon_color="Custom",
+            icon_color=(1, 1, 1, 1),
+            pos_hint={"center_y": 0.5},
+            on_press=self.on_notif_pressed
+        )
+
+        self.header.add_widget(title_layout)
+        self.header.add_widget(self.notif_btn)
+        self.layout.add_widget(self.header)
 
         # === BODY ===
         self.scroll = MDScrollView(size_hint=(1, 0.87))
@@ -66,15 +86,29 @@ class DashboardScreen(MDScreen):
         Clock.schedule_interval(self.check_reminder_times, 60)
 
     def on_pre_enter(self, *args):
+        # Update header color based on current theme
+        theme = MDApp.get_running_app().theme_cls.theme_style
+        header_color = (0.1, 0.1, 0.1, 1) if theme == "Dark" else (0.1, 0.6, 0.7, 1)
+        self.header.md_bg_color = header_color
         self.update_dashboard()
 
-    def _update_header_bg(self, instance, value):
-        self.header_bg.pos = instance.pos
-        self.header_bg.size = instance.size
-
     def create_card(self, title, subtitle, on_press=None):
-        card = MDCard(orientation="vertical", radius=[15], size_hint_y=None, height="100dp", md_bg_color=rgb(204, 240, 245), padding=10, elevation=3)
-        label = MDLabel(text=f"{title}\n{subtitle}", halign="center", theme_text_color="Custom", text_color=rgb(37, 50, 55), font_style="Body1")
+        card = MDCard(
+            orientation="vertical",
+            radius=[15],
+            size_hint_y=None,
+            height="100dp",
+            md_bg_color=rgb(204, 240, 245),
+            padding=10,
+            elevation=3
+        )
+        label = MDLabel(
+            text=f"{title}\n{subtitle}",
+            halign="center",
+            theme_text_color="Custom",
+            text_color=rgb(37, 50, 55),
+            font_style="Body1"
+        )
         card.add_widget(label)
         if on_press:
             card.on_touch_down = lambda touch: on_press() if card.collide_point(*touch.pos) else False
@@ -128,13 +162,13 @@ class DashboardScreen(MDScreen):
                 if not next_reminder or reminder_time < next_reminder["time"]:
                     next_reminder = {"medicine": med, "time": reminder_time}
 
-        self.active_card.children[0].text = f"✅ Active\nReminders\n{active_count}" if active_count else "✅ Active\nReminders\nNone"
-        self.today_card.children[0].text = f"📅 Today’s\nMedicines\n{len(today_meds)}" if today_meds else "📅 Today’s\nMedicines\n0"
+        self.active_card.children[0].text = f"Active\nReminders\n{active_count}" if active_count else "Active\nReminders\nNone"
+        self.today_card.children[0].text = f"Today’s\nMedicines\n{len(today_meds)}" if today_meds else "Today’s\nMedicines\n0"
         if next_reminder:
             t = next_reminder["time"].strftime("%I:%M %p")
-            self.next_card.children[0].text = f"⏰ Next Reminder\n{next_reminder['medicine']} - {t}"
+            self.next_card.children[0].text = f"Next Reminder\n{next_reminder['medicine']} - {t}"
         else:
-            self.next_card.children[0].text = "⏰ Next Reminder\nNone"
+            self.next_card.children[0].text = "Next Reminder\nNone"
 
         self.today_meds_list = today_meds
 
@@ -172,7 +206,7 @@ class DashboardScreen(MDScreen):
         if not self.pending_notifications:
             self.dialog = MDDialog(
                 title="Notifications",
-                text="🔕 No new medicine reminders.",
+                text="No new medicine reminders.",
                 buttons=[MDFlatButton(text="OK", on_release=lambda x: self.dialog.dismiss())]
             )
             self.dialog.open()
@@ -181,7 +215,7 @@ class DashboardScreen(MDScreen):
         messages = []
         for key in self.pending_notifications:
             med_name = key.split("_")[0]
-            messages.append(f"🕒 Please take your {med_name} medicine")
+            messages.append(f"Please take your {med_name} medicine")
 
         self.dialog = MDDialog(
             title="Medicine Reminder",
@@ -218,6 +252,7 @@ class DashboardScreen(MDScreen):
         )
         self.dialog.open()
 
+    # === Navigation Methods ===
     def go_to_home(self, *args):
         if self.manager:
             self.manager.current = "dashboard"

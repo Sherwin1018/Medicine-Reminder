@@ -17,12 +17,13 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
 
 # Import screens
+from home import HomeScreen
 from dashboard import DashboardScreen
 from add_reminder import AddReminderScreen
 from view_reminders import ViewRemindersScreen
 from tracker import TrackerScreen
 from settings import SettingsScreen
-from edit_reminder import EditReminderScreen  # ✅ NEW
+from edit_reminder import EditReminderScreen
 
 Window.size = (360, 640)
 
@@ -94,12 +95,13 @@ class MainLayout(BoxLayout):
         self.sm = MDScreenManager(transition=NoTransition(), size_hint_y=1)
         self.add_widget(self.sm)
 
+        self.sm.add_widget(HomeScreen(name="home"))
         self.sm.add_widget(DashboardScreen(name="dashboard"))
         self.sm.add_widget(AddReminderScreen(name="add_reminder"))
         self.sm.add_widget(ViewRemindersScreen(name="view_reminders"))
         self.sm.add_widget(TrackerScreen(name="tracker"))
         self.sm.add_widget(SettingsScreen(name="settings"))
-        self.sm.add_widget(EditReminderScreen(name="edit_reminder"))  # ✅ NEW
+        self.sm.add_widget(EditReminderScreen(name="edit_reminder"))
 
         nav_callbacks = {
             "dashboard": lambda: self.switch("dashboard"),
@@ -112,6 +114,13 @@ class MainLayout(BoxLayout):
         self.navbar = CustomBottomNav(screen_manager_callback=nav_callbacks, active_screen="dashboard")
         self.add_widget(self.navbar)
 
+        self.sm.current = "home"
+        self.update_navbar_visibility("home")
+
+    def update_navbar_visibility(self, screen_name):
+        self.navbar.opacity = 0 if screen_name == "home" else 1
+        self.navbar.disabled = screen_name == "home"
+
     def switch(self, screen_name):
         if self.sm.current != screen_name:
             self.nav_stack.append(self.sm.current)
@@ -119,6 +128,7 @@ class MainLayout(BoxLayout):
         self.sm.current = screen_name
         self.navbar.current = screen_name
         self.navbar.update_active()
+        self.update_navbar_visibility(screen_name)
 
     def go_back(self):
         if self.nav_stack:
@@ -126,17 +136,19 @@ class MainLayout(BoxLayout):
             self.sm.current = prev_screen
             self.navbar.current = prev_screen
             self.navbar.update_active()
+            self.update_navbar_visibility(prev_screen)
         else:
             self.sm.current = "dashboard"
             self.navbar.current = "dashboard"
             self.navbar.update_active()
+            self.update_navbar_visibility("dashboard")
 
 
 class MedicineReminderApp(MDApp):
     def build(self):
         self.theme_cls.primary_palette = "Teal"
         self.theme_cls.theme_style = "Light"
-        self.edit_index = None  # ✅ For edit_reminder.py
+        self.edit_index = None
         return MainLayout()
 
 

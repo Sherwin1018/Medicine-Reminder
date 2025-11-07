@@ -11,7 +11,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.dialog import MDDialog
 from kivy.uix.anchorlayout import AnchorLayout
 
-DATA_FILE = "reminders.json"
+DATA_FILE = os.path.join("data", "reminders.json")
 
 class EditReminderScreen(MDScreen):
     def __init__(self, **kwargs):

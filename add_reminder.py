@@ -11,7 +11,7 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.snackbar import Snackbar
 from kivy.uix.anchorlayout import AnchorLayout
 
-DATA_FILE = "reminders.json"
+DATA_FILE = os.path.join("data", "reminders.json")
 
 class AddReminderScreen(MDScreen):
     def __init__(self, **kwargs):
@@ -61,7 +61,7 @@ class AddReminderScreen(MDScreen):
             self.success_dialog.dismiss()
         self.success_dialog = MDDialog(
             title="Success",
-            text="✅ Reminder Added Successfully",
+            text="Reminder Added Successfully",
             buttons=[
                 MDFlatButton(text="OK", on_release=lambda x: self.success_dialog.dismiss())
             ]

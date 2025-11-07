@@ -1,3 +1,5 @@
+import json
+import os
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.label import MDLabel
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -7,35 +9,43 @@ from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.scrollview import MDScrollView
 from kivy.uix.widget import Widget
 from kivy.metrics import dp
+from kivymd.app import MDApp
+from kivy.core.audio import SoundLoader
+from plyer import vibrator
+
+SETTINGS_FILE = os.path.join("data", "settings.json")
 
 class SettingsScreen(MDScreen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.settings = {
+            "sound": True,
+            "vibration": True,
+            "notifications": True,
+            "dark_mode": False
+        }
+        self.switch_refs = {}
+        self.load_settings()
+        self.sound_enabled = self.settings["sound"]
+        self.vibration_enabled = self.settings["vibration"]
+        self.build_ui()
 
+    def build_ui(self):
         scroll = MDScrollView(size_hint=(1, 1), do_scroll_x=False)
 
         content = MDBoxLayout(
             orientation="vertical",
             padding=[dp(20), dp(20), dp(20), dp(20)],
-            spacing=dp(25),
+            spacing=dp(20),
             size_hint_y=None
         )
         content.bind(minimum_height=content.setter("height"))
 
-        # === Title ===
-        content.add_widget(MDLabel(
-            text="Settings",
-            halign="center",
-            font_style="H5",
-            size_hint_y=None,
-            height=dp(50)
-        ))
-
-        # === Toggle Row Helper ===
-        def toggle_row(text, on_toggle=None):
+        def toggle_row(text, key, handler):
             row = MDBoxLayout(
                 orientation="horizontal",
                 spacing=dp(10),
+                padding=[0, 0, dp(15), 0],
                 size_hint_y=None,
                 height=dp(40)
             )
@@ -47,8 +57,9 @@ class SettingsScreen(MDScreen):
                 size_hint_x=0.85
             )
             switch = MDSwitch(pos_hint={"center_y": 0.5})
-            if on_toggle:
-                switch.bind(active=on_toggle)
+            switch.active = self.settings[key]
+            switch.bind(active=handler)
+            self.switch_refs[key] = switch
             row.add_widget(label)
             row.add_widget(switch)
             return row
@@ -57,32 +68,85 @@ class SettingsScreen(MDScreen):
         reminder_card = MDCard(
             orientation="vertical",
             padding=dp(20),
-            spacing=dp(15),
+            spacing=dp(20),
             radius=[dp(15)],
             elevation=3,
             size_hint_y=None
         )
+        reminder_card.bind(minimum_height=reminder_card.setter("height"))
+
         reminder_card.add_widget(MDLabel(
-            text="🕐 Reminder Notifications",
+            text="Settings",
+            halign="center",
+            font_style="H5",
+            size_hint_y=None,
+            height=dp(40)
+        ))
+
+        reminder_card.add_widget(MDLabel(
+            text="Reminder Notifications",
             font_style="H6",
             bold=True,
             theme_text_color="Custom",
-            text_color=(0.2, 0.3, 0.4, 1)
-        ))
-        reminder_card.add_widget(toggle_row("Sound", self.toggle_sound))
-        reminder_card.add_widget(toggle_row("Vibration", self.toggle_vibration))
-        reminder_card.add_widget(MDLabel(
-            text="Reminder Time: Select Time (Coming Soon)",
-            theme_text_color="Secondary",
-            font_style="Caption",
+            text_color=(0.2, 0.3, 0.4, 1),
             size_hint_y=None,
-            height=dp(20)
+            height=dp(30)
         ))
 
+        reminder_card.add_widget(toggle_row("Sound", "sound", self.toggle_sound))
+        reminder_card.add_widget(toggle_row("Vibration", "vibration", self.toggle_vibration))
         content.add_widget(reminder_card)
+
+        # === Notification Settings Card ===
+        notif_card = MDCard(
+            orientation="vertical",
+            padding=dp(20),
+            spacing=dp(20),
+            radius=[dp(15)],
+            elevation=3,
+            size_hint_y=None
+        )
+        notif_card.bind(minimum_height=notif_card.setter("height"))
+
+        notif_card.add_widget(MDLabel(
+            text="Notification Settings",
+            font_style="H6",
+            bold=True,
+            theme_text_color="Custom",
+            text_color=(0.2, 0.3, 0.4, 1),
+            size_hint_y=None,
+            height=dp(30)
+        ))
+
+        notif_card.add_widget(toggle_row("Enable Notifications", "notifications", self.toggle_notifications))
+        content.add_widget(notif_card)
+
+        # === Theme Mode Card ===
+        theme_card = MDCard(
+            orientation="vertical",
+            padding=dp(20),
+            spacing=dp(20),
+            radius=[dp(15)],
+            elevation=3,
+            size_hint_y=None
+        )
+        theme_card.bind(minimum_height=theme_card.setter("height"))
+
+        theme_card.add_widget(MDLabel(
+            text="Theme Mode",
+            font_style="H6",
+            bold=True,
+            theme_text_color="Custom",
+            text_color=(0.2, 0.3, 0.4, 1),
+            size_hint_y=None,
+            height=dp(30)
+        ))
+
+        theme_card.add_widget(toggle_row("Dark Mode", "dark_mode", self.toggle_theme))
+        content.add_widget(theme_card)
+
         content.add_widget(Widget(size_hint_y=None, height=dp(20)))
 
-        # === Back Button ===
         back_btn = MDRaisedButton(
             text="Back",
             size_hint=(None, None),
@@ -97,12 +161,58 @@ class SettingsScreen(MDScreen):
         scroll.add_widget(content)
         self.add_widget(scroll)
 
+    # === Toggle Handlers ===
     def toggle_sound(self, instance, value):
+        self.settings["sound"] = value
+        self.sound_enabled = value
+        self.save_settings()
         print("🔊 Sound Enabled:", value)
 
     def toggle_vibration(self, instance, value):
+        self.settings["vibration"] = value
+        self.vibration_enabled = value
+        self.save_settings()
         print("📳 Vibration Enabled:", value)
+
+    def toggle_notifications(self, instance, value):
+        self.settings["notifications"] = value
+        self.save_settings()
+        print("🔔 Notifications Enabled:", value)
+
+    def toggle_theme(self, instance, value):
+        self.settings["dark_mode"] = value
+        app = MDApp.get_running_app()
+        app.theme_cls.theme_style = "Dark" if value else "Light"
+        self.save_settings()
+        print("🎨 Theme switched to:", app.theme_cls.theme_style)
 
     def go_back(self, instance=None):
         if hasattr(self.manager.parent, "go_back"):
             self.manager.parent.go_back()
+
+    # === Reminder Feedback Methods ===
+    def play_reminder_sound(self):
+        if self.sound_enabled:
+            sound = SoundLoader.load("reminder.wav")
+            if sound:
+                sound.play()
+
+    def vibrate_reminder(self):
+        if self.vibration_enabled:
+            try:
+                vibrator.vibrate(time=0.5)
+            except:
+                print("⚠️ Vibration not supported on this platform.")
+
+    # === Settings Persistence ===
+    def load_settings(self):
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, "r") as f:
+                    self.settings.update(json.load(f))
+            except:
+                pass
+
+    def save_settings(self):
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump(self.settings, f, indent=4)
